@@ -36,7 +36,7 @@ Designed by **UP主 zzx**.
    git clone [https://github.com/zzxxxjj/christmas-tree.git](https://github.com/zzxxxjj/christmas-tree.git)
    cd christmas-tree
 
-```
+``
 
 2. **安装依赖**
 ```bash
