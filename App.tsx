@@ -10,6 +10,13 @@ const App: React.FC = () => {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
 
+  // 🧠 智能 BGM 策略：
+  // 本地开发(npm run dev) -> 用本地文件 "/bgm.mp3"，保证零延迟
+  // 打包上线(npm run build) -> 用 CDN 链接，利用全球加速
+  const bgmSrc = import.meta.env.PROD 
+    ? "https://cdn.jsdelivr.net/gh/zzxxxjj/christmas-tree@main/public/bgm.mp3" 
+    : "/bgm.mp3";
+
   useEffect(() => {
     if (audioRef.current) {
       audioRef.current.volume = 0.3; 
@@ -33,11 +40,12 @@ const App: React.FC = () => {
 
   return (
     <div className="relative w-full h-full text-white font-mono overflow-hidden">
+      {/* 🎵 这里的 src 变成了变量，会自动切换 */}
       <audio 
-  ref={audioRef} 
-  loop 
-  src="https://cdn.jsdelivr.net/gh/zzxxxjj/christmas-tree@main/public/bgm.mp3" 
-/>
+        ref={audioRef} 
+        loop 
+        src={bgmSrc} 
+      />
 
       {/* 3D 场景层 */}
       <div className="absolute inset-0 z-0">

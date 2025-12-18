@@ -17,6 +17,12 @@ export default defineConfig({
       ext: '.gz',         // 生成的文件后缀
     }),
   ],
+  // 👇 新增这个 server 配置块 (这就是实现双击自动打开网页的关键)
+  server: {
+    port: 5173,       // 🔒 强制固定端口为 5173，防止有时候变成了 5174 导致快捷方式失效
+    open: true,       // 🚀 核心设置：服务启动成功后，自动打开默认浏览器
+    host: '0.0.0.0',  // (可选) 允许局域网内的手机通过 IP 访问
+  },
   build: {
     // 消除打包大小警告 (默认500kb，我们调大到2000kb)
     chunkSizeWarningLimit: 2000,
