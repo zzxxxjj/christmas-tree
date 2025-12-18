@@ -1,11 +1,12 @@
 # 🎄 Magic Christmas Tree (WebAR)
 
-这是一个基于手势识别的互动圣诞树网页应用。伸出手掌召唤圣诞树，握拳让它变回粒子！
+这是一个基于手势识别的互动圣诞树网页应用。握拳召唤圣诞树，张手让它变回粒子！
 Designed by **UP主 zzx**.
 
 ## 🎮 在线体验 (Demo)
 
 👉 **点我直接玩 (无需下载):cloud1-5g88q5wxccd521b3-1350065050.tcloudbaseapp.com（无需魔法国内直连）
+
                           https://christmas-tree-git-main-zzxxs-projects.vercel.app/（需要魔法）
 
 ## ✨ 功能特点
