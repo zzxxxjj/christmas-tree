@@ -1,57 +1,31 @@
 import React, { useEffect, useRef, useState } from 'react';
-import * as mpHands from '@mediapipe/hands';
-import * as drawingUtils from '@mediapipe/drawing_utils';
+import { Hands, Results, HAND_CONNECTIONS } from '@mediapipe/hands';
+import { drawConnectors, drawLandmarks } from '@mediapipe/drawing_utils';
+import { Camera } from '@mediapipe/camera_utils';
 
 interface HandControllerProps {
   setExplosionFactor: (val: number) => void;
   onStatusChange: (status: string) => void;
 }
 
-// Safely retrieve Hands class from default or named export
-const Hands = (mpHands as any).Hands || (mpHands as any).default?.Hands;
-
-// Safely retrieve drawing functions
-const drawConnectors = (drawingUtils as any).drawConnectors || (drawingUtils as any).default?.drawConnectors;
-const drawLandmarks = (drawingUtils as any).drawLandmarks || (drawingUtils as any).default?.drawLandmarks;
-
-// Define Results interface locally since named imports might fail
-interface Results {
-    multiHandLandmarks: Array<Array<{x: number, y: number, z: number}>>;
-    image: any;
-    multiHandedness: any[];
-}
-
-// Define HAND_CONNECTIONS locally to avoid import issues with the CDN module
-const HAND_CONNECTIONS: [number, number][] = [
-  [0, 1], [1, 2], [2, 3], [3, 4],
-  [0, 5], [5, 6], [6, 7], [7, 8],
-  [5, 9], [9, 10], [10, 11], [11, 12],
-  [9, 13], [13, 14], [14, 15], [15, 16],
-  [13, 17], [0, 17], [17, 18], [18, 19], [19, 20]
-];
-
 export const HandController: React.FC<HandControllerProps> = ({ setExplosionFactor, onStatusChange }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [loading, setLoading] = useState(true);
-  const requestRef = useRef<number>();
+  
+  // 🔒 性能锁：防止上一帧没处理完就塞下一帧，导致手机卡死
+  const isProcessingRef = useRef(false);
 
   useEffect(() => {
     if (!videoRef.current || !canvasRef.current) return;
-    
-    if (!Hands) {
-        onStatusChange("LIB ERROR: Hands not found");
-        return;
-    }
 
-    let active = true;
-
-    // Initialize MediaPipe Hands
+    // 1. 初始化 Hands 实例
     const hands = new Hands({
-    locateFile: (file) => {
-    // 这里的 /models/ 对应你 public 目录下的 models 文件夹
-    return `/models/${file}`;
-    },
+      locateFile: (file) => {
+        // ⭐ 核心修改：强制指向本地 public/models 目录
+        // 确保你的 public/models 文件夹里有 hands_solution_packed_assets_loader.js 等文件
+        return `/models/${file}`;
+      },
     });
 
     hands.setOptions({
@@ -61,33 +35,30 @@ export const HandController: React.FC<HandControllerProps> = ({ setExplosionFact
       minTrackingConfidence: 0.5,
     });
 
+    // 2. 处理识别结果
     hands.onResults((results: Results) => {
-      if (!active) return;
+      // 解锁，允许处理下一帧
+      isProcessingRef.current = false;
       setLoading(false);
-      
+
       const canvasCtx = canvasRef.current?.getContext('2d');
       if (canvasCtx && canvasRef.current) {
         canvasCtx.save();
         
-        // Fill background with black to hide video feed/other objects
+        // 绘制背景
+        canvasCtx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
         canvasCtx.fillStyle = 'black';
         canvasCtx.fillRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-        
+
         if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
           for (const landmarks of results.multiHandLandmarks) {
-            if (drawConnectors) {
-                // Green stripes for connections
-                drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, { color: '#00FF00', lineWidth: 2 });
-            }
-            if (drawLandmarks) {
-                // Green dots for landmarks to match the aesthetic
-                drawLandmarks(canvasCtx, landmarks, { color: '#00FF00', lineWidth: 1, radius: 2 });
-            }
+            // 绘制骨架 (绿色风格)
+            drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, { color: '#00FF00', lineWidth: 2 });
+            drawLandmarks(canvasCtx, landmarks, { color: '#00FF00', lineWidth: 1, radius: 2 });
 
-            // LOGIC: Detect Fist vs Open Hand
-            // Method: Average distance from fingertips to wrist (Landmark 0)
+            // --- 简单的握拳/张手判断逻辑 ---
             const wrist = landmarks[0];
-            const tips = [8, 12, 16, 20]; // Index, Middle, Ring, Pinky tips
+            const tips = [8, 12, 16, 20]; // 食指、中指、无名指、小指尖
             
             let totalDist = 0;
             tips.forEach(idx => {
@@ -99,98 +70,79 @@ export const HandController: React.FC<HandControllerProps> = ({ setExplosionFact
             
             const avgDist = totalDist / tips.length;
 
-            // Threshold: Open hand > ~0.3-0.4, Fist < ~0.2
-            // Used 0.22 as a sweet spot for "Fist" detection
+            // 阈值判断 (根据实际体验微调)
             const isFist = avgDist < 0.22;
 
             if (isFist) {
-              setExplosionFactor(0); // Tree
+              setExplosionFactor(0); // 握拳 -> 树
               onStatusChange('TREE (FIST)');
             } else {
-              setExplosionFactor(1); // Explode
+              setExplosionFactor(1); // 张手 -> 爆炸
               onStatusChange('EXPLODE (OPEN)');
             }
           }
         } else {
-          // No hands detected
           onStatusChange('NO HAND DETECTED');
         }
         canvasCtx.restore();
       }
     });
 
-    // Manual Camera Loop
-    const detect = async () => {
-      if (!active) return;
-      
-      if (videoRef.current && videoRef.current.readyState >= 2) {
-         try {
-           await hands.send({ image: videoRef.current });
-         } catch (err) {
-           console.error("MediaPipe send error:", err);
-         }
-      }
-      // Schedule next frame
-      requestRef.current = requestAnimationFrame(detect);
-    };
+    // 3. 启动摄像头
+    if (videoRef.current) {
+      const camera = new Camera(videoRef.current, {
+        onFrame: async () => {
+          // 🔒 性能锁检查
+          if (isProcessingRef.current || !videoRef.current) return;
+          
+          isProcessingRef.current = true;
+          try {
+            await hands.send({ image: videoRef.current });
+          } catch (error) {
+            console.error("Hands send error:", error);
+            isProcessingRef.current = false; // 出错也要解锁
+          }
+        },
+        width: 640, // 降低分辨率以提高性能
+        height: 360,
+      });
 
-    const startCamera = async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-            video: { 
-                width: { ideal: 640 }, 
-                height: { ideal: 360 },
-                facingMode: 'user' 
-            }
-        });
-
-        if (active && videoRef.current) {
-            videoRef.current.srcObject = stream;
-            // Wait for video to load enough data to play
-            videoRef.current.onloadeddata = () => {
-                if (active && videoRef.current) {
-                    videoRef.current.play().catch(e => console.error("Play error", e));
-                    detect();
-                }
-            };
-        }
-      } catch (e) {
-        console.error("Camera setup error:", e);
-        if (active) {
-            onStatusChange("CAMERA ERROR - Allow Perms");
-            setLoading(false);
-        }
-      }
-    };
-
-    startCamera();
+      camera.start().catch(err => {
+        console.error("Camera start error:", err);
+        onStatusChange("CAMERA ERROR");
+      });
+    }
 
     return () => {
-        active = false;
-        if (requestRef.current) cancelAnimationFrame(requestRef.current);
-        hands.close();
-        if (videoRef.current && videoRef.current.srcObject) {
-            const stream = videoRef.current.srcObject as MediaStream;
-            stream.getTracks().forEach(track => track.stop());
-        }
-    }
+      hands.close();
+    };
   }, [setExplosionFactor, onStatusChange]);
 
   return (
     <div className="fixed bottom-4 right-4 z-50 border-2 border-green-500 rounded-lg overflow-hidden bg-black shadow-[0_0_20px_rgba(0,255,0,0.3)]">
-      {/* Hidden Video Source */}
-      <video ref={videoRef} className="hidden" playsInline muted />
+      {/* ⚠️ iOS 核心修复：
+        1. 不能用 hidden 或 display:none，否则 Safari 会暂停视频流。
+        2. 改用 opacity-0 + absolute，让它在渲染树上但不可见。
+        3. 必须加 playsInline (React写法是驼峰)
+      */}
+      <video 
+        ref={videoRef} 
+        className="absolute inset-0 opacity-0 pointer-events-none" 
+        playsInline 
+        muted 
+      />
       
-      {/* Visible Feedback Canvas */}
+      {/* 只有 Canvas 是可见的 */}
       <canvas 
         ref={canvasRef} 
         width={320} 
         height={180} 
         className="w-[200px] h-[112px] mirror-video block bg-black"
       />
+      
       {loading && (
-        <div className="absolute inset-0 flex items-center justify-center text-green-500 text-xs font-mono animate-pulse bg-black">
-          INIT CAMERA...
+        <div className="absolute inset-0 flex items-center justify-center text-green-500 text-xs font-mono animate-pulse bg-black pointer-events-none">
+          LOADING AI...
         </div>
       )}
     </div>
