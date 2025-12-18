@@ -3,12 +3,6 @@
 这是一个基于手势识别的互动圣诞树网页应用。伸出手掌握拳召唤圣诞树，张手让它变回粒子！
 Designed by **UP主 zzx**.
 
----
-
-<div align="center">
-  <img src="image_3.png" alt="Magic Tree Logo" width="200" />
-</div>
-
 ## ✨ 功能特点
 
 * **🖐 手势控制**: 张开手掌 (Open) = 爆炸特效；握紧拳头 (Fist) = 聚合成树。
