@@ -48,9 +48,10 @@ export const HandController: React.FC<HandControllerProps> = ({ setExplosionFact
 
     // Initialize MediaPipe Hands
     const hands = new Hands({
-      locateFile: (file: string) => {
-        return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
-      },
+    locateFile: (file) => {
+    // 这里的 /models/ 对应你 public 目录下的 models 文件夹
+    return `/models/${file}`;
+    },
     });
 
     hands.setOptions({
