@@ -33,7 +33,11 @@ const App: React.FC = () => {
 
   return (
     <div className="relative w-full h-full text-white font-mono overflow-hidden">
-      <audio ref={audioRef} loop src="/bgm.mp3" />
+      <audio 
+  ref={audioRef} 
+  loop 
+  src="https://cdn.jsdelivr.net/gh/zzxxxjj/christmas-tree@main/public/bgm.mp3" 
+/>
 
       {/* 3D 场景层 */}
       <div className="absolute inset-0 z-0">
