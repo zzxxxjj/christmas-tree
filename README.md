@@ -1,20 +1,25 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# 🎄 Magic Christmas Tree (WebAR)
 
-# Run and deploy your AI Studio app
+这是一个基于手势识别的互动圣诞树网页应用。伸出手掌召唤圣诞树，握拳让它变回粒子！
+Designed by **UP主 zzx**.
 
-This contains everything you need to run your app locally.
+## 🎮 在线体验 (Demo)
 
-View your app in AI Studio: https://ai.studio/apps/drive/1tSnUagNRgs75sku0TJB3VKQVHJvIXa4P
+👉 **点我直接玩 (无需下载):** [你的腾讯云链接粘贴在这里]
 
-## Run Locally
+## ✨ 功能特点
 
-**Prerequisites:**  Node.js
+* **手势识别**: 使用 MediaPipe 识别手掌与拳头。
+* **3D 粒子特效**: 基于 Three.js 的视觉盛宴。
+* **节日氛围**: 自带温馨 BGM 和圣诞特效。
+* **零延迟**: 模型本地化部署，国内秒开。
 
+## 🛠️ 技术栈
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+* React + TypeScript
+* Vite
+* Three.js / React-Three-Fiber
+* Google MediaPipe
+
+---
+Make with ❤️ by zzx
