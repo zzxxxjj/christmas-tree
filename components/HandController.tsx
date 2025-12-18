@@ -13,18 +13,18 @@ export const HandController: React.FC<HandControllerProps> = ({ setExplosionFact
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [loading, setLoading] = useState(true);
   
-  // 🔒 性能锁：防止上一帧没处理完就塞下一帧，导致手机卡死
+  // 🔒 性能锁：防止处理过快导致卡顿
   const isProcessingRef = useRef(false);
 
   useEffect(() => {
     if (!videoRef.current || !canvasRef.current) return;
 
-    // 1. 初始化 Hands 实例
+    // 1. 初始化 Hands (使用在线 CDN)
     const hands = new Hands({
       locateFile: (file) => {
-        // ⭐ 核心修改：强制指向本地 public/models 目录
-        // 确保你的 public/models 文件夹里有 hands_solution_packed_assets_loader.js 等文件
-        return `/models/${file}`;
+        // 🌐 方案一：使用 jsDelivr CDN 加载模型
+        // 这样 Vercel 就不需要托管大文件了，加载速度会变快
+        return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
       },
     });
 
@@ -35,31 +35,27 @@ export const HandController: React.FC<HandControllerProps> = ({ setExplosionFact
       minTrackingConfidence: 0.5,
     });
 
-    // 2. 处理识别结果
+    // 2. 处理结果
     hands.onResults((results: Results) => {
-      // 解锁，允许处理下一帧
-      isProcessingRef.current = false;
+      isProcessingRef.current = false; // 解锁
       setLoading(false);
 
       const canvasCtx = canvasRef.current?.getContext('2d');
       if (canvasCtx && canvasRef.current) {
         canvasCtx.save();
-        
-        // 绘制背景
         canvasCtx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+        
+        // 绘制黑色背景，保持 UI 统一
         canvasCtx.fillStyle = 'black';
         canvasCtx.fillRect(0, 0, canvasRef.current.width, canvasRef.current.height);
 
         if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
           for (const landmarks of results.multiHandLandmarks) {
-            // 绘制骨架 (绿色风格)
             drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, { color: '#00FF00', lineWidth: 2 });
             drawLandmarks(canvasCtx, landmarks, { color: '#00FF00', lineWidth: 1, radius: 2 });
 
-            // --- 简单的握拳/张手判断逻辑 ---
             const wrist = landmarks[0];
-            const tips = [8, 12, 16, 20]; // 食指、中指、无名指、小指尖
-            
+            const tips = [8, 12, 16, 20];
             let totalDist = 0;
             tips.forEach(idx => {
               const tip = landmarks[idx];
@@ -69,15 +65,13 @@ export const HandController: React.FC<HandControllerProps> = ({ setExplosionFact
             });
             
             const avgDist = totalDist / tips.length;
-
-            // 阈值判断 (根据实际体验微调)
             const isFist = avgDist < 0.22;
 
             if (isFist) {
-              setExplosionFactor(0); // 握拳 -> 树
+              setExplosionFactor(0);
               onStatusChange('TREE (FIST)');
             } else {
-              setExplosionFactor(1); // 张手 -> 爆炸
+              setExplosionFactor(1);
               onStatusChange('EXPLODE (OPEN)');
             }
           }
@@ -92,18 +86,16 @@ export const HandController: React.FC<HandControllerProps> = ({ setExplosionFact
     if (videoRef.current) {
       const camera = new Camera(videoRef.current, {
         onFrame: async () => {
-          // 🔒 性能锁检查
           if (isProcessingRef.current || !videoRef.current) return;
-          
           isProcessingRef.current = true;
           try {
             await hands.send({ image: videoRef.current });
           } catch (error) {
             console.error("Hands send error:", error);
-            isProcessingRef.current = false; // 出错也要解锁
+            isProcessingRef.current = false;
           }
         },
-        width: 640, // 降低分辨率以提高性能
+        width: 640,
         height: 360,
       });
 
@@ -120,10 +112,9 @@ export const HandController: React.FC<HandControllerProps> = ({ setExplosionFact
 
   return (
     <div className="fixed bottom-4 right-4 z-50 border-2 border-green-500 rounded-lg overflow-hidden bg-black shadow-[0_0_20px_rgba(0,255,0,0.3)]">
-      {/* ⚠️ iOS 核心修复：
-        1. 不能用 hidden 或 display:none，否则 Safari 会暂停视频流。
-        2. 改用 opacity-0 + absolute，让它在渲染树上但不可见。
-        3. 必须加 playsInline (React写法是驼峰)
+      {/* 📱 iOS 兼容性关键点：
+         使用 opacity-0 让视频不可见，但千万不能用 hidden 或 display:none。
+         Safari 只有在视频元素“渲染中”时才允许获取视频流。
       */}
       <video 
         ref={videoRef} 
@@ -132,7 +123,6 @@ export const HandController: React.FC<HandControllerProps> = ({ setExplosionFact
         muted 
       />
       
-      {/* 只有 Canvas 是可见的 */}
       <canvas 
         ref={canvasRef} 
         width={320} 
