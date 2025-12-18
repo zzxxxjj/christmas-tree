@@ -1,20 +1,7 @@
-请用这份新的内容**完全覆盖**你项目根目录下的 `README.md` 文件。
-
-这份新的说明文档删除了在线链接，并用你提供的图片和清晰的步骤，指导用户如何在本地运行你的项目。
-
-### ✅ 全新 README.md 内容
-
-```markdown
 # 🎄 Magic Christmas Tree (WebAR)
 
 这是一个基于手势识别的互动圣诞树网页应用。伸出手掌召唤圣诞树，握拳让它变回粒子！
 Designed by **UP主 zzx**.
-
----
-
-<div align="center">
-  <img src="image_3.png" alt="Magic Tree Logo" width="200" />
-</div>
 
 ## 📦 本地运行 (Quick Start)
 
